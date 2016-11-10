@@ -133,8 +133,7 @@ class BayesianOptimization(object):
             self.bounds[row] = self.parameter_bounds[key]
 
     def maximize(self,
-                 init_points=5,
-                 n_iter=25,
+                 n_batches,
                  acq='ei',
                  kappa=2.576,
                  xi=0.0,
@@ -144,15 +143,7 @@ class BayesianOptimization(object):
 
         Parameters
         ----------
-        :param init_points:
-            Number of randomly chosen points to sample the
-            target function before fitting the gp.
-
-        :param n_iter:
-            Total number of times the process is to repeated. Note that
-            currently this methods does not have stopping criteria (due to a
-            number of reasons), therefore the total number of points to be
-            sampled must be specified.
+        :param n_batches:
 
         :param acq:
             Acquisition function to be used, defaults to Expected Improvement.
@@ -168,6 +159,8 @@ class BayesianOptimization(object):
         -------
         :return: Nothing
         """
+        n_iter = len(n_batches)
+
         # Reset timer
         self.plog.reset_timer()
 
@@ -186,6 +179,7 @@ class BayesianOptimization(object):
         # Finding argmax of the acquisition function.
         selected_batch = acq_max(ac=self.util.utility,
                                  gp=self.gp,
+                                 batches=n_batches[0],
                                  y_max=y_max,
                                  bounds=self.bounds)
 
@@ -215,10 +209,11 @@ class BayesianOptimization(object):
                 y_max = self.Y[-1]
 
             # Maximize acquisition function to find next probing point
-            x_max = acq_max(ac=self.util.utility,
-                            gp=self.gp,
-                            y_max=y_max,
-                            bounds=self.bounds)
+            selected_batch = acq_max(ac=self.util.utility,
+                                     gp=self.gp,
+                                     batches=n_batches[i],
+                                     y_max=y_max,
+                                     bounds=self.bounds)
 
             # Print stuff
             if self.verbose:
