@@ -46,7 +46,7 @@ def acq_max(ac, gp, groups, y_max, bounds):
                bounds=bounds,
                method="L-BFGS-B")
 
-            solution= optimize_result.x
+            solution = optimize_result.x
             sample_score = ac(solution, gp=gp, y_max=y_max)
             total_gain_score += sample_score
 
