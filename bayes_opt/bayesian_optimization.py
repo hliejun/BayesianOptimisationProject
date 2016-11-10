@@ -26,14 +26,15 @@ class BayesianOptimization(object):
         self.dim = len(parameter_bounds)
 
         # Create an array with parameters bounds
-        bounds = []
+        self.bounds = []
+        
         for key in self.parameter_bounds.keys():
-            bounds.append(self.parameter_bounds[key])
+            self.bounds.append(self.parameter_bounds[key])
         self.bounds = np.asarray(self.bounds)
 
         # Initialization flag
         self.initialized = False
-        self.setup = False
+        self.hasSetup = False
 
         # Numpy array placeholders
         self.X = None
@@ -80,15 +81,20 @@ class BayesianOptimization(object):
 
         :return:
         """
-        if not self.setup:
+        if not self.hasSetup:
             raise RuntimeError("BO has not been set up yet.")
-
+        
+        print("ORIGINAL: ", points)
+        
         self.X = np.delete(points, 0, 1)
         self.Y = points[0]
+        
+        print("X: ", self.X)
+        print("Y: ", self.Y)
 
         # Update GP with unique rows of X to prevent GP from breaking
         unique_rows = get_unique_rows(self.X)
-        self.gp.fit(self.X[unique_rows], self.Y[unique_rows])
+        self.gp.fit(self.X[unique_rows - 1], self.Y[unique_rows - 1])
 
         self.initialized = True
 
@@ -134,7 +140,7 @@ class BayesianOptimization(object):
         # Set parameters if any was passed
         self.gp.set_params(**gp_params)
 
-        self.setup = True
+        self.hasSetup = True
 
     def minimize(self, n_batches):
         """
