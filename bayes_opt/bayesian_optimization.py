@@ -78,9 +78,6 @@ class BayesianOptimization(object):
 
         label must be in column 0
 
-        :param y_column:
-        column index of target
-
         :return:
         """
         if not self.setup:
@@ -174,8 +171,8 @@ class BayesianOptimization(object):
                                      bounds=self.bounds)
 
             # Append most recently generated values to X and Y arrays
-            new_Xs = selected_group[:,1:]
-            new_Ys = selected_group[:,0]
+            new_Xs = selected_group[:, 1:]
+            new_Ys = selected_group[:, 0]
             self.X = np.vstack((self.X, new_Xs))
             self.Y = np.append(self.Y, new_Ys)
 
@@ -184,14 +181,14 @@ class BayesianOptimization(object):
             self.gp.fit(self.X[unique_rows], self.Y[unique_rows])
 
             # Update maximum value to search for next probe point.
-            highest_new_Y = new_Ys.max()
-            if highest_new_Y > y_max:
-                y_max = highest_new_Y
+            highest_new_y = new_Ys.max()
+            if highest_new_y > y_max:
+                y_max = highest_new_y
 
             # Print stuff
             if self.verbose:
-                for i in range(len(new_Ys)):
-                    self.plog.print_step(new_Xs[i], new_Ys[i])
+                for j in range(len(new_Ys)):
+                    self.plog.print_step(new_Xs[j], new_Ys[j])
 
             # Keep track of total number of iterations
             self.i += 1
@@ -201,9 +198,9 @@ class BayesianOptimization(object):
                                                       self.X[self.Y.argmax()]))
                                }
             self.res['all']['values'].extend(new_Ys)
-            for i in range(len(new_Xs)):
+            for j in range(len(new_Xs)):
                 self.res['all']['params'].append(
-                    dict(zip(self.keys, new_Xs[i])))
+                    dict(zip(self.keys, new_Xs[j])))
 
         # Print a final report if verbose active.
         if self.verbose:

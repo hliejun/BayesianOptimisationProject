@@ -32,10 +32,6 @@ def acq_max(ac, gp, groups, y_max, bounds):
     :return: x_max, The arg max of the acquisition function.
     """
 
-    # Start with the lower bound as the argmax
-    x_max = bounds[:, 0]
-    max_acq = None
-
     raw_gain_scores = []
     raw_dissimilarity_scores = []
     for i in range(len(groups)):
@@ -46,7 +42,7 @@ def acq_max(ac, gp, groups, y_max, bounds):
             # TO-DO
             # Find the minimum of minus the acquisition function
             sample_score = minimize(
-               lambda x: -ac(x.reshape(1, -1), gp=gp,y_max=y_max),
+               lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
                sample.reshape(1, -1),
                bounds=bounds,
                method="L-BFGS-B")
@@ -68,7 +64,6 @@ def acq_max(ac, gp, groups, y_max, bounds):
 
     best_group = groups[group_scores.index(max(group_scores))]
 
-
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
     return np.clip(best_group, bounds[:, 0], bounds[:, 1])
@@ -85,6 +80,7 @@ def calculate_dissimilarity_score(group):
     average_distance = total_distances / len(group)
 
     return average_distance
+
 
 class UtilityFunction(object):
     """
