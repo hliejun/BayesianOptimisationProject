@@ -84,13 +84,13 @@ class BayesianOptimization(object):
         if not self.hasSetup:
             raise RuntimeError("BO has not been set up yet.")
         
-        print("ORIGINAL: ", points)
+        # print("ORIGINAL: ", points)
         
         self.X = np.delete(points, 0, 1)
         self.Y = points[0]
         
-        print("X: ", self.X)
-        print("Y: ", self.Y)
+        # print("X: ", self.X)
+        # print("Y: ", self.Y)
 
         # Update GP with unique rows of X to prevent GP from breaking
         unique_rows = get_unique_rows(self.X)
