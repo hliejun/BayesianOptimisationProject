@@ -1,7 +1,7 @@
 import numpy as np
 from datetime import datetime
 from scipy.stats import norm
-from scipy.optimize import minimize
+import scipy.optimize as so
 
 
 def acq_max(ac, gp, groups, y_max, bounds):
@@ -38,15 +38,16 @@ def acq_max(ac, gp, groups, y_max, bounds):
         group = groups[i]
         total_gain_score = 0
         for sample in group:
-
-            # TO-DO
-            # Find the minimum of minus the acquisition function
-            sample_score = minimize(
+            # Maximize the acquisition function by minimizing the negated
+            # acquisition function
+            optimize_result = so.minimize(
                lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
                sample.reshape(1, -1),
                bounds=bounds,
                method="L-BFGS-B")
 
+            solution= optimize_result.x
+            sample_score = ac(solution, gp=gp, y_max=y_max)
             total_gain_score += sample_score
 
         average_gain_score = total_gain_score / len(group)
