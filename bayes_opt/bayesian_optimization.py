@@ -174,12 +174,6 @@ class BayesianOptimization(object):
         # Set acquisition function
         self.util = UtilityFunction(kind=acq, kappa=kappa, xi=xi)
 
-        # Initialize x, y and find current y_max
-        if not self.initialized:
-            if self.verbose:
-                self.plog.print_header()
-            self.init(init_points)
-
         y_max = self.Y.max()
 
         # Set parameters if any was passed
