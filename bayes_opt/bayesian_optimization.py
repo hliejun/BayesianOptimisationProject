@@ -6,7 +6,7 @@ from .helpers import UtilityFunction, unique_rows, PrintLog, acq_max
 
 class BayesianOptimization(object):
 
-    def __init__(self, f, parameter_bounds, verbose=1):
+    def __init__(self, f, parameter_bounds, gp_kernel=Matern(), verbose=1):
         """
         :param f:
             Function to be maximized.
@@ -54,7 +54,7 @@ class BayesianOptimization(object):
 
         # Internal GP regressor
         self.gp = GaussianProcessRegressor(
-            kernel=Matern(),
+            kernel=gp_kernel,
             n_restarts_optimizer=25,
         )
 
