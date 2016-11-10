@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import division
 import numpy as np
 from datetime import datetime
 from scipy.stats import norm
@@ -165,7 +163,8 @@ class PrintLog(object):
             print("{}Bayesian Optimization{}".format(BColours.RED,
                                                      BColours.ENDC))
 
-        print(BColours.BLUE + "-" * (29 + sum([s + 5 for s in self.sizes])) + BColours.ENDC)
+        print(BColours.BLUE + "-" * (29 + sum([s + 5 for s in self.sizes])) +
+              BColours.ENDC)
 
         print("{0:>{1}}".format("Step", 5), end=" | ")
         print("{0:>{1}}".format("Time", 6), end=" | ")
@@ -193,17 +192,20 @@ class PrintLog(object):
                   end=" | ")
 
             for index in self.sorti:
-                print("{0}{2: >{3}.{4}f}{1}".format(BColours.GREEN, BColours.ENDC,
+                print("{0}{2: >{3}.{4}f}{1}".format(BColours.GREEN,
+                                                    BColours.ENDC,
                                                     x[index],
                                                     self.sizes[index] + 2,
-                                                    min(self.sizes[index] - 3, 6 - 2)),
+                                                    min(self.sizes[index] - 3,
+                                                        6 - 2)),
                       end=" | ")
         else:
             print("{: >10.5f}".format(y), end=" | ")
             for index in self.sorti:
                 print("{0: >{1}.{2}f}".format(x[index],
                                               self.sizes[index] + 2,
-                                              min(self.sizes[index] - 3, 6 - 2)),
+                                              min(self.sizes[index] - 3,
+                                                  6 - 2)),
                       end=" | ")
 
         if warning:
