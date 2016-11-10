@@ -1,12 +1,10 @@
-from __future__ import print_function
-from __future__ import division
 import numpy as np
 from datetime import datetime
 from scipy.stats import norm
-from scipy.optimize import minimize
+import scipy.optimize as so
 
 
-def acq_max(ac, gp, y_max, bounds):
+def acq_max(ac, gp, groups, y_max, bounds):
     """
     A function to find the maximum of the acquisition function using
     the 'L-BFGS-B' method.
@@ -18,6 +16,9 @@ def acq_max(ac, gp, y_max, bounds):
 
     :param gp:
         A gaussian process fitted to the relevant data.
+
+    :param groups:
+        Indexable sequence where each item is a np.array containing data points.
 
     :param y_max:
         The current maximum known value of the target function.
@@ -31,28 +32,55 @@ def acq_max(ac, gp, y_max, bounds):
     :return: x_max, The arg max of the acquisition function.
     """
 
-    # Start with the lower bound as the argmax
-    x_max = bounds[:, 0]
-    max_acq = None
+    raw_gain_scores = []
+    raw_dissimilarity_scores = []
+    for i in range(len(groups)):
+        group = groups[i]
+        total_gain_score = 0
+        for sample in group:
+            # Maximize the acquisition function by minimizing the negated
+            # acquisition function
+            optimize_result = so.minimize(
+               lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
+               sample.reshape(1, -1),
+               bounds=bounds,
+               method="L-BFGS-B")
 
-    x_tries = np.random.uniform(bounds[:, 0], bounds[:, 1],
-                                size=(100, bounds.shape[0]))
+            solution = optimize_result.x
+            sample_score = ac(solution, gp=gp, y_max=y_max)
+            total_gain_score += sample_score
 
-    for x_try in x_tries:
-        # Find the minimum of minus the acquisition function
-        res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
-                       x_try.reshape(1, -1),
-                       bounds=bounds,
-                       method="L-BFGS-B")
+        average_gain_score = total_gain_score / len(group)
+        raw_gain_scores.append(average_gain_score)
 
-        # Store it if better than previous minimum(maximum).
-        if max_acq is None or -res.fun >= max_acq:
-            x_max = res.x
-            max_acq = -res.fun
+        similarity_score = calculate_dissimilarity_score(group)
+        raw_dissimilarity_scores.append(similarity_score)
+
+    normalizer = sum(raw_dissimilarity_scores)
+    normalized_dissimilarity_scores = map(lambda n: n/normalizer,
+                                          raw_dissimilarity_scores)
+    group_scores = list(map(lambda gain, dissimilarity: gain * dissimilarity,
+                        raw_gain_scores,
+                        normalized_dissimilarity_scores))
+
+    best_group = groups[group_scores.index(max(group_scores))]
 
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
-    return np.clip(x_max, bounds[:, 0], bounds[:, 1])
+    return np.clip(best_group, bounds[:, 0], bounds[:, 1])
+
+
+def calculate_dissimilarity_score(group):
+    center = np.average(group, axis=0)
+    total_distances = 0
+
+    for sample in group:
+        distance = np.linalg.norm(sample - center)
+        total_distances += distance
+
+    average_distance = total_distances / len(group)
+
+    return average_distance
 
 
 class UtilityFunction(object):
@@ -102,7 +130,7 @@ class UtilityFunction(object):
         return norm.cdf(z)
 
 
-def unique_rows(a):
+def get_unique_rows(a):
     """
     A functions to trim repeated rows that may appear when optimizing.
     This is necessary to avoid the sklearn GP object from breaking
@@ -112,7 +140,7 @@ def unique_rows(a):
     :return: mask of unique rows
     """
 
-    # Sort array and kep track of where things should go back to
+    # Sort array and keep track of where things should go back to
     order = np.lexsort(a.T)
     reorder = np.argsort(order)
 
@@ -165,7 +193,8 @@ class PrintLog(object):
             print("{}Bayesian Optimization{}".format(BColours.RED,
                                                      BColours.ENDC))
 
-        print(BColours.BLUE + "-" * (29 + sum([s + 5 for s in self.sizes])) + BColours.ENDC)
+        print(BColours.BLUE + "-" * (29 + sum([s + 5 for s in self.sizes])) +
+              BColours.ENDC)
 
         print("{0:>{1}}".format("Step", 5), end=" | ")
         print("{0:>{1}}".format("Time", 6), end=" | ")
@@ -193,17 +222,20 @@ class PrintLog(object):
                   end=" | ")
 
             for index in self.sorti:
-                print("{0}{2: >{3}.{4}f}{1}".format(BColours.GREEN, BColours.ENDC,
+                print("{0}{2: >{3}.{4}f}{1}".format(BColours.GREEN,
+                                                    BColours.ENDC,
                                                     x[index],
                                                     self.sizes[index] + 2,
-                                                    min(self.sizes[index] - 3, 6 - 2)),
+                                                    min(self.sizes[index] - 3,
+                                                        6 - 2)),
                       end=" | ")
         else:
             print("{: >10.5f}".format(y), end=" | ")
             for index in self.sorti:
                 print("{0: >{1}.{2}f}".format(x[index],
                                               self.sizes[index] + 2,
-                                              min(self.sizes[index] - 3, 6 - 2)),
+                                              min(self.sizes[index] - 3,
+                                                  6 - 2)),
                       end=" | ")
 
         if warning:
