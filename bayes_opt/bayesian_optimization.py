@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern
-from .helpers import UtilityFunction, unique_rows, PrintLog, acq_max
+from .helpers import UtilityFunction, get_unique_rows, PrintLog, acq_max
 
 
 class BayesianOptimization(object):
@@ -33,6 +33,7 @@ class BayesianOptimization(object):
 
         # Initialization flag
         self.initialized = False
+        self.setup = False
 
         # Numpy array placeholders
         self.X = None
@@ -82,9 +83,16 @@ class BayesianOptimization(object):
 
         :return:
         """
+        if not self.setup:
+            raise RuntimeError("BO has not been set up yet.")
 
         self.X = np.delete(points, 0, 1)
         self.Y = points[0]
+
+        # Update GP with unique rows of X to prevent GP from breaking
+        unique_rows = get_unique_rows(self.X)
+        self.gp.fit(self.X[unique_rows], self.Y[unique_rows])
+
         self.initialized = True
 
     def set_bounds(self, new_bounds):
@@ -105,31 +113,39 @@ class BayesianOptimization(object):
             # Reset all entries, even if the same.
             self.bounds[row] = self.parameter_bounds[key]
 
-    def maximize(self,
-                 n_batches,
-                 acq='ei',
-                 kappa=2.576,
-                 xi=0.0,
-                 **gp_params):
+    def setup(self, acq='poi', kappa=2.576, xi=0.0, **gp_params):
         """
-        Main optimization method.
-
-        Parameters
-        ----------
-        :param n_batches:
+        Customize BO
 
         :param acq:
-            Acquisition function to be used, defaults to Expected Improvement.
+            Acquisition function to be used,
+            defaults to Probability of Improvement.
 
         :param kappa:
+            For Upper Confidence Bound
 
         :param xi:
+            For Expected Improvement and Probability of Improvement
 
         :param gp_params:
             Parameters to be passed to the Scikit-learn Gaussian Process object
 
-        Returns
-        -------
+        :return:
+        """
+        self.util = UtilityFunction(kind=acq, kappa=kappa, xi=xi)
+
+        # Set parameters if any was passed
+        self.gp.set_params(**gp_params)
+
+        self.setup = True
+
+    def minimize(self, n_batches):
+        """
+        Main optimization method.
+
+        :param n_batches:
+            np.array [batch][group][sample][feature]
+
         :return: Nothing
         """
         n_iter = len(n_batches)
@@ -137,24 +153,7 @@ class BayesianOptimization(object):
         # Reset timer
         self.plog.reset_timer()
 
-        # Set acquisition function
-        self.util = UtilityFunction(kind=acq, kappa=kappa, xi=xi)
-
         y_max = self.Y.max()
-
-        # Set parameters if any was passed
-        self.gp.set_params(**gp_params)
-
-        # Find unique rows of X to avoid GP from breaking
-        ur = unique_rows(self.X)
-        self.gp.fit(self.X[ur], self.Y[ur])
-
-        # Finding argmax of the acquisition function.
-        selected_batch = acq_max(ac=self.util.utility,
-                                 gp=self.gp,
-                                 batches=n_batches[0],
-                                 y_max=y_max,
-                                 bounds=self.bounds)
 
         # Print new header
         if self.verbose:
@@ -167,30 +166,32 @@ class BayesianOptimization(object):
         # The arg_max of the acquisition function is found and this will be
         # the next probed value of the target function in the next round.
         for i in range(n_iter):
-
-            # TO-DO: select X and Y from selected batch
-            # Append most recently generated values to X and Y arrays
-            self.X = np.vstack((self.X, selected_batch.x))
-            self.Y = np.append(self.Y, selected_batch.y)
-
-            # Updating the GP.
-            ur = unique_rows(self.X)
-            self.gp.fit(self.X[ur], self.Y[ur])
-
-            # Update maximum value to search for next probe point.
-            if self.Y[-1] > y_max:
-                y_max = self.Y[-1]
-
-            # Maximize acquisition function to find next probing point
-            selected_batch = acq_max(ac=self.util.utility,
+            # Find argmax of the acquisition function.
+            selected_group = acq_max(ac=self.util.utility,
                                      gp=self.gp,
-                                     batches=n_batches[i],
+                                     groups=n_batches[i],
                                      y_max=y_max,
                                      bounds=self.bounds)
 
+            # Append most recently generated values to X and Y arrays
+            new_Xs = selected_group[:,1:]
+            new_Ys = selected_group[:,0]
+            self.X = np.vstack((self.X, new_Xs))
+            self.Y = np.append(self.Y, new_Ys)
+
+            # Update GP
+            unique_rows = get_unique_rows(self.X)
+            self.gp.fit(self.X[unique_rows], self.Y[unique_rows])
+
+            # Update maximum value to search for next probe point.
+            highest_new_Y = new_Ys.max()
+            if highest_new_Y > y_max:
+                y_max = highest_new_Y
+
             # Print stuff
             if self.verbose:
-                self.plog.print_step(self.X[-1], self.Y[-1])
+                for i in range(len(new_Ys)):
+                    self.plog.print_step(new_Xs[i], new_Ys[i])
 
             # Keep track of total number of iterations
             self.i += 1
@@ -199,8 +200,10 @@ class BayesianOptimization(object):
                                'max_params': dict(zip(self.keys,
                                                       self.X[self.Y.argmax()]))
                                }
-            self.res['all']['values'].append(self.Y[-1])
-            self.res['all']['params'].append(dict(zip(self.keys, self.X[-1])))
+            self.res['all']['values'].extend(new_Ys)
+            for i in range(len(new_Xs)):
+                self.res['all']['params'].append(
+                    dict(zip(self.keys, new_Xs[i])))
 
         # Print a final report if verbose active.
         if self.verbose:
