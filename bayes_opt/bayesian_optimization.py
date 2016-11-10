@@ -34,11 +34,6 @@ class BayesianOptimization(object):
         # Initialization flag
         self.initialized = False
 
-        # Initialization lists --- stores starting points before process begins
-        self.init_points = []
-        self.x_init = []
-        self.y_init = []
-
         # Numpy array placeholders
         self.X = None
         self.Y = None
@@ -67,31 +62,11 @@ class BayesianOptimization(object):
         # Verbose
         self.verbose = verbose
 
-    def initialize(self, points_dict):
+    def initialize(self, points):
         """
-        Method to introduce point for which the target function
-        value is known
+        Method to introduce labelled points
 
-        :param points_dict:
-        :return:
-        """
-
-        for target in points_dict:
-
-            self.y_init.append(target)
-
-            all_points = []
-            for key in self.keys:
-                all_points.append(points_dict[target][key])
-
-            self.x_init.append(all_points)
-
-    def initialize_df(self, points_df):
-        """
-        Method to introduce point for which the target function
-        value is known from pandas dataframe file
-
-        :param points_df: pandas dataframe with columns
+        :param points: np.array with columns
         (target, {list of columns matching self.keys})
 
         ex:
@@ -99,20 +74,18 @@ class BayesianOptimization(object):
         -1166.19102       7.0034                0.6849       8.3673
         -1142.71370       6.6186                0.7314       3.5455
         -1138.68293       6.0798                0.9540       2.3281
-        -1146.65974       2.4566                0.9290       0.3456
-        -1160.32854       1.9821                0.5298       8.7863
+
+        label must be in column 0
+
+        :param y_column:
+        column index of target
 
         :return:
         """
 
-        for i in points_df.index:
-            self.y_init.append(points_df.loc[i, 'target'])
-
-            all_points = []
-            for key in self.keys:
-                all_points.append(points_df.loc[i, key])
-
-            self.x_init.append(all_points)
+        self.X = np.delete(points, 0, 1)
+        self.Y = points[0]
+        self.initialized = True
 
     def set_bounds(self, new_bounds):
         """
