@@ -4,7 +4,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, batches, y_max, bounds):
+def acq_max(ac, gp, groups, y_max, bounds):
     """
     A function to find the maximum of the acquisition function using
     the 'L-BFGS-B' method.
@@ -17,9 +17,8 @@ def acq_max(ac, gp, batches, y_max, bounds):
     :param gp:
         A gaussian process fitted to the relevant data.
 
-    :param batches:
-        Indexable sequence where each item is a np.array containing data
-        points.
+    :param groups:
+        Indexable sequence where each item is a np.array containing data points.
 
     :param y_max:
         The current maximum known value of the target function.
@@ -37,12 +36,12 @@ def acq_max(ac, gp, batches, y_max, bounds):
     x_max = bounds[:, 0]
     max_acq = None
 
-    best_batch_index = -1
-    best_batch_score = 0
-    for i in range(len(batches)):
-        batch = batches[i]
+    raw_gain_scores = []
+    raw_dissimilarity_scores = []
+    for i in range(len(groups)):
+        group = groups[i]
         total_gain_score = 0
-        for sample in batch:
+        for sample in group:
 
             # TO-DO
             # Find the minimum of minus the acquisition function
@@ -54,22 +53,38 @@ def acq_max(ac, gp, batches, y_max, bounds):
 
             total_gain_score += sample_score
 
-        similarity_score = calculate_similarity_score(batch)
-        average_POI_score = total_gain_score / len(batch)
-        batch_score = average_POI_score / similarity_score
-        if batch_score > best_batch_score:
-            best_batch_score = batch_score
-            best_batch_index = i
+        average_gain_score = total_gain_score / len(group)
+        raw_gain_scores.append(average_gain_score)
 
-    best_batch = batches[best_batch_index]
+        similarity_score = calculate_dissimilarity_score(group)
+        raw_dissimilarity_scores.append(similarity_score)
+
+    normalizer = sum(raw_dissimilarity_scores)
+    normalized_dissimilarity_scores = map(lambda n: n/normalizer,
+                                          raw_dissimilarity_scores)
+    group_scores = list(map(lambda gain, dissimilarity: gain * dissimilarity,
+                        raw_gain_scores,
+                        normalized_dissimilarity_scores))
+
+    best_group = groups[group_scores.index(max(group_scores))]
+
 
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
-    return np.clip(best_batch, bounds[:, 0], bounds[:, 1])
+    return np.clip(best_group, bounds[:, 0], bounds[:, 1])
 
-def calculate_similarity_score(batch):
-    # TO-DO
-    return 0
+
+def calculate_dissimilarity_score(group):
+    center = np.average(group, axis=0)
+    total_distances = 0
+
+    for sample in group:
+        distance = np.linalg.norm(sample - center)
+        total_distances += distance
+
+    average_distance = total_distances / len(group)
+
+    return average_distance
 
 class UtilityFunction(object):
     """
