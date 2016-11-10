@@ -73,77 +73,6 @@ class BayesianOptimization(object):
         # Verbose
         self.verbose = verbose
 
-    def init(self, init_points):
-        """
-        Initialization method to kick start the optimization process. It is a
-        combination of points passed by the user, and randomly sampled ones.
-
-        :param init_points:
-            Number of random points to probe.
-        """
-
-        # Generate random points
-        l = [np.random.uniform(x[0], x[1], size=init_points)
-             for x in self.bounds]
-
-        # Concatenate new random points to possible existing
-        # points from self.explore method.
-        self.init_points += list(map(list, zip(*l)))
-
-        # Create empty list to store the new values of the function
-        y_init = []
-
-        # Evaluate target function at all initialization
-        # points (random + explore)
-        for x in self.init_points:
-
-            y_init.append(self.f(**dict(zip(self.keys, x))))
-
-            if self.verbose:
-                self.plog.print_step(x, y_init[-1])
-
-        # Append any other points passed by the self.initialize method (these
-        # also have a corresponding target value passed by the user).
-        self.init_points += self.x_init
-
-        # Append the target value of self.initialize method.
-        y_init += self.y_init
-
-        # Turn it into np array and store.
-        self.X = np.asarray(self.init_points)
-        self.Y = np.asarray(y_init)
-
-        # Updates the flag
-        self.initialized = True
-
-    def explore(self, points_dict):
-        """
-        Method to explore user defined points
-
-        :param points_dict:
-        :return:
-        """
-
-        # Consistency check
-        param_tup_lens = []
-
-        for key in self.keys:
-            param_tup_lens.append(len(list(points_dict[key])))
-
-        if all([e == param_tup_lens[0] for e in param_tup_lens]):
-            pass
-        else:
-            raise ValueError('The same number of initialization points '
-                             'must be entered for every parameter.')
-
-        # Turn into list of lists
-        all_points = []
-        for key in self.keys:
-            all_points.append(points_dict[key])
-
-        # Take transpose of list
-        self.init_points = list(map(list, zip(*all_points)))
-
     def initialize(self, points_dict):
         """
         Method to introduce point for which the target function
@@ -282,17 +211,6 @@ class BayesianOptimization(object):
         # The arg_max of the acquisition function is found and this will be
         # the next probed value of the target function in the next round.
         for i in range(n_iter):
-            # Test if x_max is repeated, if it is, draw another one at random
-            # If it is repeated, print a warning
-            pwarning = False
-            if np.any((self.X - x_max).sum(axis=1) == 0):
-
-                x_max = np.random.uniform(self.bounds[:, 0],
-                                          self.bounds[:, 1],
-                                          size=self.bounds.shape[0])
-
-                pwarning = True
-
             # Append most recently generated values to X and Y arrays
             self.X = np.vstack((self.X, x_max.reshape((1, -1))))
             self.Y = np.append(self.Y, self.f(**dict(zip(self.keys, x_max))))
@@ -313,7 +231,7 @@ class BayesianOptimization(object):
 
             # Print stuff
             if self.verbose:
-                self.plog.print_step(self.X[-1], self.Y[-1], warning=pwarning)
+                self.plog.print_step(self.X[-1], self.Y[-1])
 
             # Keep track of total number of iterations
             self.i += 1
