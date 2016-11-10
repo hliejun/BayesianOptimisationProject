@@ -87,7 +87,7 @@ class BayesianOptimization(object):
         # print("ORIGINAL: ", points)
         
         self.X = np.delete(points, 0, 1)
-        self.Y = points[0]
+        self.Y = points[:, 0]
         
         # print("X: ", self.X)
         # print("Y: ", self.Y)

@@ -38,11 +38,13 @@ def acq_max(ac, gp, groups, y_max, bounds):
         group = groups[i]
         total_gain_score = 0
         for sample in group:
+            sample_xs = sample[1:]
+
             # Maximize the acquisition function by minimizing the negated
             # acquisition function
             optimize_result = so.minimize(
                lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
-               sample.reshape(1, -1),
+               sample_xs.reshape(1, -1),
                bounds=bounds,
                method="L-BFGS-B")
 
@@ -64,10 +66,7 @@ def acq_max(ac, gp, groups, y_max, bounds):
                         normalized_dissimilarity_scores))
 
     best_group = groups[group_scores.index(max(group_scores))]
-
-    # Clip output to make sure it lies within the bounds. Due to floating
-    # point technicalities this is not always the case.
-    return np.clip(best_group, bounds[:, 0], bounds[:, 1])
+    return best_group
 
 
 def calculate_dissimilarity_score(group):
@@ -125,7 +124,7 @@ class UtilityFunction(object):
 
     @staticmethod
     def _poi(x, gp, y_max, xi):
-        mean, std = gp.predict(x, return_std=True)
+        mean, std = gp.predict(x.reshape(1, -1), return_std=True)
         z = (mean - y_max - xi)/std
         return norm.cdf(z)
 
