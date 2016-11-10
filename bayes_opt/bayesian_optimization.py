@@ -6,11 +6,8 @@ from .helpers import UtilityFunction, unique_rows, PrintLog, acq_max
 
 class BayesianOptimization(object):
 
-    def __init__(self, f, parameter_bounds, gp_kernel=Matern(), verbose=1):
+    def __init__(self, parameter_bounds, gp_kernel=Matern(), verbose=1):
         """
-        :param f:
-            Function to be maximized.
-
         :param parameter_bounds:
             Dictionary with parameters names as keys and a tuple with minimum
             and maximum values.
@@ -33,9 +30,6 @@ class BayesianOptimization(object):
         for key in self.parameter_bounds.keys():
             bounds.append(self.parameter_bounds[key])
         self.bounds = np.asarray(self.bounds)
-
-        # Some function to be optimized
-        self.f = f
 
         # Initialization flag
         self.initialized = False
@@ -196,14 +190,15 @@ class BayesianOptimization(object):
         self.gp.fit(self.X[ur], self.Y[ur])
 
         # Finding argmax of the acquisition function.
-        x_max = acq_max(ac=self.util.utility,
-                        gp=self.gp,
-                        y_max=y_max,
-                        bounds=self.bounds)
+        selected_batch = acq_max(ac=self.util.utility,
+                                 gp=self.gp,
+                                 y_max=y_max,
+                                 bounds=self.bounds)
 
         # Print new header
         if self.verbose:
             self.plog.print_header(initialization=False)
+
         # Iterative process of searching for the maximum. At each round the
         # most recent x and y values probed are added to the X and Y arrays
         # used to train the Gaussian Process. Next the maximum known value
@@ -211,9 +206,11 @@ class BayesianOptimization(object):
         # The arg_max of the acquisition function is found and this will be
         # the next probed value of the target function in the next round.
         for i in range(n_iter):
+
+            # TO-DO: select X and Y from selected batch
             # Append most recently generated values to X and Y arrays
-            self.X = np.vstack((self.X, x_max.reshape((1, -1))))
-            self.Y = np.append(self.Y, self.f(**dict(zip(self.keys, x_max))))
+            self.X = np.vstack((self.X, selected_batch.x))
+            self.Y = np.append(self.Y, selected_batch.y)
 
             # Updating the GP.
             ur = unique_rows(self.X)
