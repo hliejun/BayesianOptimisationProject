@@ -6,12 +6,12 @@ from .helpers import UtilityFunction, unique_rows, PrintLog, acq_max
 
 class BayesianOptimization(object):
 
-    def __init__(self, f, pbounds, verbose=1):
+    def __init__(self, f, parameter_bounds, verbose=1):
         """
         :param f:
             Function to be maximized.
 
-        :param pbounds:
+        :param parameter_bounds:
             Dictionary with parameters names as keys and a tuple with minimum
             and maximum values.
 
@@ -20,18 +20,18 @@ class BayesianOptimization(object):
 
         """
         # Store the original dictionary
-        self.pbounds = pbounds
+        self.parameter_bounds = parameter_bounds
 
         # Get the name of the parameters
-        self.keys = list(pbounds.keys())
+        self.keys = list(parameter_bounds.keys())
 
         # Find number of parameters
-        self.dim = len(pbounds)
+        self.dim = len(parameter_bounds)
 
         # Create an array with parameters bounds
         bounds = []
-        for key in self.pbounds.keys():
-            bounds.append(self.pbounds[key])
+        for key in self.parameter_bounds.keys():
+            bounds.append(self.parameter_bounds[key])
         self.bounds = np.asarray(self.bounds)
 
         # Some function to be optimized
@@ -45,7 +45,7 @@ class BayesianOptimization(object):
         self.x_init = []
         self.y_init = []
 
-        # Numpy array place holders
+        # Numpy array placeholders
         self.X = None
         self.Y = None
 
@@ -130,13 +130,13 @@ class BayesianOptimization(object):
         """
 
         # Update the internal object stored dict
-        self.pbounds.update(new_bounds)
+        self.parameter_bounds.update(new_bounds)
 
         # Loop through the all bounds and reset the min-max bound matrix
-        for row, key in enumerate(self.pbounds.keys()):
+        for row, key in enumerate(self.parameter_bounds.keys()):
 
             # Reset all entries, even if the same.
-            self.bounds[row] = self.pbounds[key]
+            self.bounds[row] = self.parameter_bounds[key]
 
     def maximize(self,
                  init_points=5,
