@@ -64,6 +64,9 @@ class BayesianOptimization(object):
         # Verbose
         self.verbose = verbose
 
+        self.selected_groups_scores = []
+        self.average_batch_scores = []
+
     def initialize(self, points):
         """
         Method to introduce labelled points
@@ -170,11 +173,15 @@ class BayesianOptimization(object):
         # the next probed value of the target function in the next round.
         for i in range(n_iter):
             # Find argmax of the acquisition function.
-            selected_group = acq_max(ac=self.util.utility,
-                                     gp=self.gp,
-                                     groups=n_batches[i],
-                                     y_max=y_max,
-                                     bounds=self.bounds)
+            results = acq_max(ac=self.util.utility,
+                              gp=self.gp,
+                              groups=n_batches[i],
+                              y_max=y_max,
+                              bounds=self.bounds)
+            selected_group, selected_group_score, average_batch_score = results
+
+            self.selected_groups_scores.append(selected_group_score)
+            self.average_batch_scores.append(average_batch_score)
 
             # Append most recently generated values to X and Y arrays
             new_Xs = selected_group[:, 1:]

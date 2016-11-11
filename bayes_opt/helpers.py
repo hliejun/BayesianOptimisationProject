@@ -65,8 +65,10 @@ def acq_max(ac, gp, groups, y_max, bounds):
                         raw_gain_scores,
                         normalized_dissimilarity_scores))
 
-    best_group = groups[group_scores.index(max(group_scores))]
-    return best_group
+    average_group_score = sum(group_scores) / len(group_scores)
+    best_group_score = max(group_scores)
+    best_group = groups[group_scores.index(best_group_score)]
+    return best_group, best_group_score, average_group_score
 
 
 def calculate_dissimilarity_score(group):
