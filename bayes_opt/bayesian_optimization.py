@@ -183,7 +183,7 @@ class BayesianOptimization(object):
             self.Y = np.append(self.Y, new_Ys)
 
             # Update GP
-            unique_rows = get_unique_rows(self.X)
+            unique_rows = get_unique_rows(self.X) - 1
             self.gp.fit(self.X[unique_rows], self.Y[unique_rows])
 
             # Update maximum value to search for next probe point.
