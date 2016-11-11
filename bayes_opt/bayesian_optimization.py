@@ -87,7 +87,7 @@ class BayesianOptimization(object):
         # print("ORIGINAL: ", points)
         
         self.X = np.delete(points, 0, 1)
-        self.Y = points[:, 0]
+        self.Y = points[0]
         
         # print("X: ", self.X)
         # print("Y: ", self.Y)
@@ -203,6 +203,7 @@ class BayesianOptimization(object):
                                'max_params': dict(zip(self.keys,
                                                       self.X[self.Y.argmax()]))
                                }
+                
             self.res['all']['values'].extend(new_Ys)
             for j in range(len(new_Xs)):
                 self.res['all']['params'].append(
